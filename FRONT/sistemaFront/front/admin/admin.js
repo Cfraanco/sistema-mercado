@@ -14,7 +14,7 @@ function inicializarSistema() {
     // Verificar autenticación
     const usuario = JSON.parse(localStorage.getItem('usuario'));
     if (!usuario) {
-        window.location.href = '../Login/index.html';
+        window.location.href = '../Login/login.html';
         return;
     }
 
