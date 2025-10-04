@@ -24,6 +24,7 @@ public class UsuarioMapperImpl implements UsuarioMapper {
         dto.setNombre(entity.getNombre());
         dto.setCedula(entity.getCedula());
         dto.setRol(entity.getRol());
+        dto.setContrasena(entity.getContrasena());
         return dto;
     }
 

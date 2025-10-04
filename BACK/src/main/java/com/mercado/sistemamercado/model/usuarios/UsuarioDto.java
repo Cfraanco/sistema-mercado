@@ -13,5 +13,7 @@ public class UsuarioDto {
 
     String cedula;
 
+    String contrasena;
+
     String rol;
 }

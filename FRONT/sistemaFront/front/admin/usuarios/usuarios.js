@@ -129,6 +129,7 @@ function editarUsuario(usuario) {
     document.getElementById('usuarioCedula').value = usuario.cedula;
     document.getElementById('usuarioNombre').value = usuario.nombre;
     document.getElementById('usuarioRol').value = usuario.rol;
+    document.getElementById('usuarioContrasena').value = usuario.contrasena; 
     
     const modal = new bootstrap.Modal(document.getElementById('modalUsuario'));
     modal.show();
@@ -143,6 +144,46 @@ async function guardarUsuario() {
         contrasena: document.getElementById('usuarioContrasena').value,
         rol: document.getElementById('usuarioRol').value
     };
+
+    // Validación: campos no nulos ni vacíos (excepto id)
+    const validacion = validarUsuarioData(usuarioData);
+    if (!validacion.valido) {
+        // mostrar mensaje y enfocar el primer campo inválido
+        alert(validacion.mensaje);
+        if (validacion.campo) {
+            const el = document.getElementById(validacion.campo);
+            if (el) el.focus();
+        }
+        return;
+    }
+
+    // Comprobar cédula duplicada en el servidor antes de crear/actualizar
+    try {
+        const listaResp = await fetch('http://localhost:8080/api/usuarios/listar');
+        if (listaResp.ok) {
+            const usuariosExistentes = await listaResp.json();
+            const cedulaTrim = usuarioData.cedula == null ? '' : String(usuarioData.cedula).trim();
+            // Si estamos editando, permitir la misma cédula del propio usuario (excluir por id)
+            const existe = usuariosExistentes.some(u => {
+                const uCed = u.cedula == null ? '' : String(u.cedula).trim();
+                const mismoId = usuarioData.id && String(u.id) === String(usuarioData.id);
+                return uCed === cedulaTrim && !mismoId;
+            });
+
+            if (existe) {
+                alert(`el usuario con la cedula ${usuarioData.cedula} ya existe`);
+                const el = document.getElementById('usuarioCedula');
+                if (el) el.focus();
+                return;
+            }
+        } else {
+            // Si no se puede obtener la lista, no bloqueamos la operación, pero avisamos en consola
+            console.warn('No se pudo validar cédula duplicada: respuesta no OK');
+        }
+    } catch (e) {
+        console.warn('Error verificando cédula duplicada:', e);
+        // No interrumpir la operación por problemas de validación remota
+    }
 
     try {
         const isEditing = usuarioData.id && usuarioData.id !== '';
@@ -218,4 +259,38 @@ async function eliminarUsuario(id, cedula) {
         console.error('Error eliminando usuario:', error);
         alert('Error al eliminar el usuario');
     }
+}
+
+/**
+ * Valida que los campos obligatorios de usuario no sean nulos ni vacíos.
+ * Excluye la validación del campo `id` (puede estar vacío para crear).
+ * Devuelve { valido: boolean, mensaje: string, campo: string|null }
+ */
+function validarUsuarioData(usuario) {
+    if (!usuario) {
+        return { valido: false, mensaje: 'Datos de usuario inválidos', campo: null };
+    }
+
+    // Normalizar valores y comprobar vacío
+    const cedula = usuario.cedula == null ? '' : String(usuario.cedula).trim();
+    const nombre = usuario.nombre == null ? '' : String(usuario.nombre).trim();
+    const contrasena = usuario.contrasena == null ? '' : String(usuario.contrasena).trim();
+    const rol = usuario.rol == null ? '' : String(usuario.rol).trim();
+
+    if (cedula === '') {
+        return { valido: false, mensaje: 'La cédula es obligatoria', campo: 'usuarioCedula' };
+    }
+    if (nombre === '') {
+        return { valido: false, mensaje: 'El nombre es obligatorio', campo: 'usuarioNombre' };
+    }
+    // Para edición, si el id está presente y la contraseña se deja vacía, permitir no cambiarla?
+    // Aquí asumimos que la contraseña siempre es obligatoria; si quieres cambiarlo, indícalo.
+    if (contrasena === '') {
+        return { valido: false, mensaje: 'La contraseña es obligatoria', campo: 'usuarioContrasena' };
+    }
+    if (rol === '') {
+        return { valido: false, mensaje: 'El rol es obligatorio', campo: 'usuarioRol' };
+    }
+
+    return { valido: true, mensaje: '', campo: null };
 }
