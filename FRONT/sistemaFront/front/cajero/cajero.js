@@ -52,7 +52,7 @@ async function buscarProducto() {
 
                 if (response.ok) {
                         const producto = await response.json();
-                        mostrarProductoEncontrado(producto[0]);
+                        mostrarProductoEncontrado(producto);
                 } else {
                         alert('Producto no encontrado');
                         limpiarBusqueda();
@@ -64,19 +64,104 @@ async function buscarProducto() {
         }
 }
 
-function mostrarProductoEncontrado(producto) {
-        productoEncontrado = producto;
+function mostrarProductoEncontrado(productos) {
 
+        if (!productos) {
+                limpiarBusqueda();
+                return;
+        }
+
+        const lista = Array.isArray(productos) ? productos : [productos];
+
+        if (lista.length === 0) {
+                alert('Producto no encontrado');
+                limpiarBusqueda();
+                return;
+        }
+
+        if (lista.length === 1) {
+                const producto = lista[0];
+                productoEncontrado = producto;
+                document.getElementById('nombreProducto').textContent = producto.nombre;
+                document.getElementById('descripcion').textContent = producto.descripcion;
+                document.getElementById('codigoInfo').textContent = producto.codigo;
+                document.getElementById('stockInfo').textContent = producto.stock;
+                document.getElementById('precioInfo').textContent = producto.precioUnitario;
+
+                const contExist = document.getElementById('resultadosProductos');
+                if (contExist) contExist.remove();
+
+                document.getElementById('productoInfo').style.display = 'block';
+                document.getElementById('cantidadProducto').focus();
+                return;
+        }
+
+        let cont = document.getElementById('resultadosProductos');
+        if (cont) cont.remove();
+
+        cont = document.createElement('div');
+        cont.id = 'resultadosProductos';
+        cont.className = 'mb-3';
+        const titulo = document.createElement('label');
+        titulo.className = 'form-label';
+        titulo.textContent = 'Productos encontrados - seleccione uno:';
+        cont.appendChild(titulo);
+
+        const listaEl = document.createElement('div');
+        listaEl.className = 'list-group';
+
+        lista.forEach((producto, idx) => {
+                const item = document.createElement('div');
+                item.className = 'list-group-item d-flex justify-content-between align-items-start';
+                item.innerHTML = `
+                        <div>
+                                <div><strong>${producto.nombre}</strong> (${producto.codigo})</div>
+                                <div class="text-muted">${producto.descripcion}</div>
+                                <div class="text-small">Stock: ${producto.stock} — Precio: $${producto.precioUnitario}</div>
+                        </div>
+                `;
+
+                const btn = document.createElement('button');
+                btn.className = 'btn btn-sm btn-primary ms-3';
+                btn.textContent = 'Seleccionar';
+                btn.addEventListener('click', function () {
+                        seleccionarProducto(producto);
+                });
+
+                item.appendChild(btn);
+                listaEl.appendChild(item);
+        });
+
+        cont.appendChild(listaEl);
+
+        const productoInfoEl = document.getElementById('productoInfo');
+        if (productoInfoEl && productoInfoEl.parentNode) {
+                productoInfoEl.parentNode.insertBefore(cont, productoInfoEl);
+        } else {
+                document.body.insertBefore(cont, document.body.firstChild);
+        }
+
+        if (document.getElementById('productoInfo')) {
+                document.getElementById('productoInfo').style.display = 'none';
+        }
+}
+
+function seleccionarProducto(producto) {
+        productoEncontrado = producto;
         document.getElementById('nombreProducto').textContent = producto.nombre;
         document.getElementById('descripcion').textContent = producto.descripcion;
         document.getElementById('codigoInfo').textContent = producto.codigo;
         document.getElementById('stockInfo').textContent = producto.stock;
         document.getElementById('precioInfo').textContent = producto.precioUnitario;
 
-        document.getElementById('productoInfo').style.display = 'block';
-        document.getElementById('cantidadProducto').focus();
+        // Mostrar bloque de producto y quitar la lista de resultados
+        const cont = document.getElementById('resultadosProductos');
+        if (cont) cont.remove();
+        const productoInfoEl = document.getElementById('productoInfo');
+        if (productoInfoEl) productoInfoEl.style.display = 'block';
+        const cantidadEl = document.getElementById('cantidadProducto');
+        if (cantidadEl) cantidadEl.focus();
 }
-
 function limpiarBusqueda() {
         document.getElementById('codigoProducto').value = '';
         document.getElementById('productoInfo').style.display = 'none';

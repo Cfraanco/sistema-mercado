@@ -54,8 +54,10 @@ public class ProductoServiceImpl implements ProductoService{
                 productoDtos.add(this.productoMapper.toDTO(productoEntity));
             }
         } else {
-           ProductoEntity producto = this.productoRepository.findProductoByCodigoContaining(codigo);
-           productoDtos.add(this.productoMapper.toDTO(producto));
+            productos = this.productoRepository.findAllByCodigoContaining(codigo);
+            for (ProductoEntity productoEntity : productos) {
+                productoDtos.add(this.productoMapper.toDTO(productoEntity));
+            }
         }
 
         return productoDtos;

@@ -173,6 +173,40 @@ async function guardarProducto() {
         precioUnitario: parseFloat(document.getElementById('productoPrecio').value)
     };
 
+    // Validación al estilo usuarios.js: devuelve { valido, mensaje, campo }
+    const validacion = validarProductoData(productoData);
+    if (!validacion.valido) {
+        alert(validacion.mensaje);
+        if (validacion.campo) {
+            const el = document.getElementById(validacion.campo);
+            if (el) el.focus();
+        }
+        return;
+    }
+
+    // Comprobar código duplicado en el servidor antes de crear/actualizar
+    try {
+        const listaResp = await fetch('http://localhost:8080/api/productos/listar');
+        if (listaResp.ok) {
+            const productosExistentes = await listaResp.json();
+            const codigoTrim = productoData.codigo == null ? '' : String(productoData.codigo).trim();
+            const existe = productosExistentes.some(p => {
+                const pCod = p.codigo == null ? '' : String(p.codigo).trim();
+                const mismoId = id && String(p.id) === String(id);
+                return pCod === codigoTrim && !mismoId;
+            });
+
+            if (existe) {
+                alert(`El producto con el código ${productoData.codigo} ya existe`);
+                const el = document.getElementById('productoCodigo');
+                if (el) el.focus();
+                return;
+            }
+        }
+    } catch (e) {
+        console.warn('Error verificando código duplicado:', e);
+    }
+
     try {
 
         const isEditing = id && id !== '';
@@ -239,4 +273,37 @@ async function eliminarProducto(id, nombre) {
         console.error('Error eliminando producto:', error);
         alert('Error al eliminar el producto: ' + error.message);
     }
+}
+
+function validarProductoData(p) {
+    if (!p) {
+        return { valido: false, mensaje: 'Datos de producto inválidos', campo: null };
+    }
+
+    const codigo = p.codigo == null ? '' : String(p.codigo).trim();
+    const nombre = p.nombre == null ? '' : String(p.nombre).trim();
+    // stock y precio los normalizamos conservando números ya parseados
+
+    if (codigo === '') {
+        return { valido: false, mensaje: 'El código es obligatorio', campo: 'productoCodigo' };
+    }
+    if (nombre === '') {
+        return { valido: false, mensaje: 'El nombre es obligatorio', campo: 'productoNombre' };
+    }
+
+    if (p.stock === null || p.stock === undefined || Number.isNaN(p.stock)) {
+        return { valido: false, mensaje: 'El stock debe ser un número', campo: 'productoStock' };
+    }
+    if (!Number.isInteger(p.stock) || p.stock < 0) {
+        return { valido: false, mensaje: 'El stock debe ser un entero mayor o igual a 0', campo: 'productoStock' };
+    }
+
+    if (p.precioUnitario === null || p.precioUnitario === undefined || Number.isNaN(p.precioUnitario)) {
+        return { valido: false, mensaje: 'El precio debe ser un número', campo: 'productoPrecio' };
+    }
+    if (p.precioUnitario < 0) {
+        return { valido: false, mensaje: 'El precio debe ser mayor o igual a 0', campo: 'productoPrecio' };
+    }
+
+    return { valido: true, mensaje: '', campo: null };
 }

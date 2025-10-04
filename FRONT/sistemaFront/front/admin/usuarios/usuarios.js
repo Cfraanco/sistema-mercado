@@ -45,7 +45,7 @@ function cargarUsuarios() {
                             <input type="hidden" id="usuarioId">
                             <div class="mb-3">
                                 <label for="usuarioCedula" class="form-label">Cédula *</label>
-                                <input type="text" class="form-control" id="usuarioCedula" required>
+                                <input type="number" class="form-control" id="usuarioCedula" min="0" required>
                             </div>
                             <div class="mb-3">
                                 <label for="usuarioNombre" class="form-label">Nombre *</label>
