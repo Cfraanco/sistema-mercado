@@ -1,12 +1,14 @@
 
 async function obtenerEstadisticasCaja() {
     try {
-        const hoy = new Date().toISOString().split('T')[0];
+        const hoy = new Date().toLocaleDateString('en-CA');
         const reporteRequest = {
             fechaInicial: hoy,
             fechaFinal: hoy
         };
         
+        console.debug('obtenerEstadisticasCaja -> request', reporteRequest);
+
         const response = await fetch('http://localhost:8080/api/reportes/crear', {
             method: 'POST',
             headers: {
@@ -17,11 +19,16 @@ async function obtenerEstadisticasCaja() {
         
         if (response.ok) {
             const resultado = await response.json();
+            console.debug('obtenerEstadisticasCaja -> response', resultado);
+ 
+            const totalIngresos = resultado.totalIngresos ?? resultado.total ?? resultado.totalVentas ?? 0;
+            const numeroTransacciones = resultado.numeroTransacciones ?? resultado.totalTransacciones ?? (Array.isArray(resultado.ventas) ? resultado.ventas.length : 0) ?? 0;
+            const promedioVenta = numeroTransacciones > 0 ? Math.round(totalIngresos / numeroTransacciones) : 0;
+
             return {
-                totalVentas: resultado.totalIngresos || 0,
-                numeroTransacciones: resultado.numeroTransacciones || 0,
-                promedioVenta: resultado.numeroTransacciones > 0 ? 
-                    Math.round((resultado.totalIngresos || 0) / resultado.numeroTransacciones) : 0
+                totalVentas: totalIngresos,
+                numeroTransacciones: numeroTransacciones,
+                promedioVenta: promedioVenta
             };
         } else {
             console.error('Error al obtener estadísticas de caja');
@@ -35,13 +42,15 @@ async function obtenerEstadisticasCaja() {
 
 async function obtenerTransacciones() {
     try {
-        // Obtener las ventas del día actual
-        const hoy = new Date().toISOString().split('T')[0];
+        
+        const hoy = new Date().toLocaleDateString('en-CA');
         const reporteRequest = {
             fechaInicial: hoy,
             fechaFinal: hoy
         };
-        
+
+        console.debug('obtenerTransacciones -> request', reporteRequest);
+
         const response = await fetch('http://localhost:8080/api/reportes/crear', {
             method: 'POST',
             headers: {
@@ -49,13 +58,18 @@ async function obtenerTransacciones() {
             },
             body: JSON.stringify(reporteRequest)
         });
-        
+
         if (response.ok) {
             const resultado = await response.json();
-            // Extraer solo las ventas del reporte
-            return resultado.ventas || [];
+            console.debug('obtenerTransacciones -> response', resultado);
+            if (Array.isArray(resultado.ventas)) return resultado.ventas;
+            if (Array.isArray(resultado.listaVentas)) return resultado.listaVentas;
+            if (Array.isArray(resultado.data)) return resultado.data;
+            if (Array.isArray(resultado)) return resultado;
+
+            return [];
         } else {
-            console.error('Error al obtener transacciones');
+            console.error('Error al obtener transacciones', response.status, response.statusText);
             return [];
         }
     } catch (error) {
@@ -67,7 +81,6 @@ async function obtenerTransacciones() {
 
 let ventasDelDia = [];
 
-// Función para obtener detalle de una transacción específica
 async function obtenerDetalleTransaccion(idVenta) {
     try {
 
@@ -213,24 +226,23 @@ async function cargarCaja() {
     
     document.getElementById('contenidoModulo').innerHTML = contenido;
     
-    // Cargar datos dinámicos
     cargarEstadisticas();
     cargarTransacciones();
 }
 
 async function cargarEstadisticas() {
-    // Limpiar cache de ventas para asegurar datos frescos
+ 
     ventasDelDia = [];
     
     const estadisticas = await obtenerEstadisticasCaja();
     
     if (estadisticas) {
-        // Actualizar las tarjetas con datos reales
+     
         document.getElementById('totalVentasHoy').textContent = `$${estadisticas.totalVentas?.toLocaleString() || '0'}`;
         document.getElementById('transaccionesHoy').textContent = estadisticas.numeroTransacciones || '0';
         document.getElementById('promedioVenta').textContent = `$${estadisticas.promedioVenta?.toLocaleString() || '0'}`;
     } else {
-        // Mostrar valores por defecto si no se pueden cargar los datos
+   
         document.getElementById('totalVentasHoy').textContent = '$0';
         document.getElementById('transaccionesHoy').textContent = '0';
         document.getElementById('promedioVenta').textContent = '$0';
@@ -243,18 +255,17 @@ async function cargarTransacciones() {
     
     const ventasData = await obtenerTransacciones();
     
-    // Guardar en cache para uso posterior
+  
     ventasDelDia = ventasData;
     
     tbody.innerHTML = '';
     
     if (ventasData && ventasData.length > 0) {
         ventasData.forEach(ventaItem => {
-            // Extraer la venta del objeto wrapper
+          
             const venta = ventaItem.ventaDto;
             const fila = document.createElement('tr');
             
-            // Formatear la fecha
             const fechaFormateada = formatearFecha(venta.fecha);
             
             fila.innerHTML = `
